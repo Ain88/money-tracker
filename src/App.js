@@ -1,19 +1,32 @@
 import './App.css';
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 function App() {
   const [name, setName] = useState('');
   const [datetime, setDatetime] = useState('');
   const [description, setDescription] = useState('');
+  const [transactions, setTransactions] = useState([]);
+
+  useEffect(() => {
+    getTransactions().then((data) => setTransactions(data));
+  }, []);
+
+  async function getTransactions() {
+    const url = process.env.REACT_APP_API_URL + '/api/transactions'; 
+    const response = await fetch(url);
+    return await response.json();
+  }
+
   function addNewTransaction(ev) {
     ev.preventDefault();
-    const url = process.env.REACT_APP_API_URL + '/api/transaction'; // Add '/api' to match your Express route
+    const url = process.env.REACT_APP_API_URL + '/api/transaction'; 
+    const price = name.split(' ')[0];
     fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json', // Correct the header field name
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ name, description, datetime }), // Send a valid JSON object
+      body: JSON.stringify({ price, name:name.substring(price.length+1), description, datetime }), // Send a valid JSON object
     })
       .then((response) => {
         if (!response.ok) {
@@ -23,14 +36,26 @@ function App() {
       })
       .then((json) => {
         console.log('result', json);
+        setName('');
+        setDatetime('');
+        setDescription('');
       })
       .catch((error) => {
         console.error('Error:', error);
       });
   }
+  let balance = 0;
+  for (const transaction of transactions){
+    balance = balance + transaction.price;
+  }
+
+  balance = balance.toFixed(2);
+  const fraction = balance.split('.')[1];
+  balance = balance.split('.')[0];
+
   return (
     <main>
-      <h1>$400<span>.00</span></h1>
+      <h1>${balance}<span>{fraction}</span></h1>
       <form onSubmit={addNewTransaction}>
         <div className="basic">
           <input type="text" 
@@ -39,7 +64,7 @@ function App() {
                   placeholder={'+200 nwe samsung tv'}/>
           <input type="datetime-local" 
                   value={datetime}
-                  onChange={ev => setDatetime(ev.target.value)}/>
+                  onChange={ev => setDatetime(ev.target.value)}/> 
         </div>
         <div className="description">
           <input type="text" 
@@ -50,36 +75,18 @@ function App() {
         <button type="submit">Add new transaction</button>
       </form>
       <div className="transactions">
-        <div className="transaction">
+        {transactions.length > 0 && transactions.map(transaction => (
+         <div className="transaction">
           <div className="left">
-            <div className="name">New Samsung TV</div>
-            <div className="description">it was time for new tv</div>
+            <div className="name">{transaction.name}</div>
+            <div className="description">{transaction.description}</div>
           </div>
           <div className="right">
-            <div className="price red">-$500</div>
+            <div className={"price " +(transaction.price<0?'red':'green')}>{transaction.price}</div>
             <div className="datetime">2022-12-18 15:45</div>
           </div>
-        </div>
-        <div className="transaction">
-          <div className="left">
-            <div className="name">Gig job new website</div>
-            <div className="description">it was time for new tv</div>
-          </div>
-          <div className="right">
-            <div className="price green">+$400</div>
-            <div className="datetime">2022-12-18 15:45</div>
-          </div>
-        </div>
-        <div className="transaction">
-          <div className="left">
-            <div className="name">Iphone</div>
-            <div className="description">it was time for new tv</div>
-          </div>
-          <div className="right">
-            <div className="price red">-$900</div>
-            <div className="datetime">2022-12-18 15:45</div>
-          </div>
-        </div>
+         </div>         
+        ))}
       </div>
     </main>
   );
